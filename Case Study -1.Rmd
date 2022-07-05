@@ -1,0 +1,262 @@
+---
+title: "Capstone Case Study- 1 How Does a Bike-Share Navigate Speedy Success?"
+author: "Sarang Narayanrao Chandekar"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Scenario
+As a junior data analyst working in the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director of marketing believes the company’s future success depends on maximizing the number of annual memberships. Therefore, the team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights, the team will design a new marketing strategy to convert casual riders into annual members.But first, Cyclistic executives must approve our recommendations, so they must be backed up with compelling data insights and professional data visualizations.
+
+### GUIDING QUESTIONS:
+### Prepare
+
+* Where is your data located?
+  
+  Ans: The Data is located on a cloud server [click here](https://divvy-tripdata.s3.amazonaws.com/index.html). I'll be doing analysis on 12-Months Data sets(JUNE-21 to May-22).
+
+* How is the data organized? 
+
+  Ans: The Data sets are provided by Motivate International Inc.on monthly basis in .csv file format.
+
+* Are there issues with bias or credibility in this data? Does your data ROCCC? 
+
+  Ans: The data is Reliable, Original, Comprehensive, Current, and Cited as the data is collected directly from the customer's and published by the company so it is not biased and is consistent.
+
+* How are you addressing licensing, privacy, security, and accessibility?
+  
+  Ans: The data was collected by Motivate International Inc. by the license [click here](https://ride.divvybikes.com/data-license-agreement)
+
+* How did you verify the data’s integrity? 
+  
+  Ans:The data is complete as it contains all the required components for the analysis.There are no irregularity in the datasets as the data is maintained according to month/years.hence, the data is consistent and creadible.
+
+* How does it help you answer your question?
+  
+  Ans:To increase the number of members i.e from casual riders to membership holders I have created few extra features which will be usefull to put a comparison between the members and the casual riders.
+
+* Are there any problems with the data?
+  
+  Ans: There were few missing values which were removed other than that the data was fine.
+
+### Process
+* What tools are you choosing and why?
+  
+  Ans: I will be using R Programming Language as a tool for analysis because the data is vast and using R will be usefull to view the data easily.
+
+* Have you ensured your data’s integrity?
+  
+  Ans: Yes, The data set consists of all the required data or values neede for the analysis. The Data is not biased and also consistent.
+
+* What steps have you taken to ensure that your data is clean?
+  
+  Ans: First as the datasets were individual according to months I had to combine them into one single data frame. After merging the datasets into one I checked for the na values and I found Inspite of being consistent, the data had some "na" values which were removed other than that no dulpicate values were present. So data was cleaned and ready for the analysis.
+
+* How can you verify that your data is clean and ready to analyze?
+  
+  Ans: After removing the "na" values, I viewed the data frame and checked whether there are any na values present and found no inconsistency in the data so it was ready to use.
+
+* Have you documented your cleaning process so you can review and share those results?
+  
+  Ans: The whole data preparing and cleaning process is present in the below code:
+  
+#### Importing Packages
+
+```{r Importing Packages, message=TRUE, warning=FALSE, paged.print=TRUE, results='hide'}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(janitor)
+library(lubridate)
+library(scales)
+library(geosphere)
+```
+
+#### Importing Datasets & Merging them into One single dataframe:
+
+* 12-Months Datasets(JUNE-21 to JUNE-22) are extracted and stored in the Folder- Trip_csv.
+* The Datasets then imported and combined to create one single data frame named - Trip.
+
+```{r Merging 12-Month Dataset from Jun-21 to May-22, message=FALSE, warning=FALSE, paged.print=TRUE, results='hide'}
+
+Trip = list.files(path='D:/Capstone-Case Study 1/Trip_csv', full.names = TRUE) %>%
+  lapply(read_csv) %>%
+  bind_rows
+```
+
+* After combining the datasets the data frame looks like
+
+```{r}
+head(Trip)
+```
+
+* After looking the Trip Dataframe we notice that it contains na values which we will remove to avoid inconsistency in our data
+
+```{r}
+sapply(Trip, function(x) sum(is.na(x)))
+Trip1 = na.omit(Trip)
+View(Trip1)
+
+```
+
+## DATA ANALYSIS AND VISUALIZATION:
+
+#### Number of Rides VS Type of Riders 
+
+* The below chart shows that the number of membership holders is approximately 26% more than the casual riders. 
+
+```{r}
+
+ggplot(Trip1, aes(x=member_casual))+geom_bar(fill = "skyblue")+
+  labs(title = "Graph-1: Rides completed by Type of Riders",x = "Rider Type",y = "Number of rides")+
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 1e-6))+
+  geom_text(stat='count', aes(label=..count..), color="black",vjust=15)
+```
+  
+####  Total Distance Traveled by Rider Type
+
+* Creating new Feature or Column Named = distance: using Longitude and Latitude given inside the data frame
+* After creating new feature a graph is plotted according to the kilometers of distance traveled by the riders.
+* After examining the graph, it is concluded that around 19.0% of members with annual membership traveled more than casual riders. 
+* When calculated average distance traveled by the riders it is noted that there is not much of difference between the member and the casual riders.
+```{r}  
+Trip1 = Trip1 %>%
+  mutate(Trip1, distance = distHaversine(cbind(start_lng, start_lat), cbind(end_lng, end_lat))/1000)
+
+Trip2 = Trip1 %>%
+  group_by(member_casual) %>%
+  summarise(distance=sum(distance)) 
+  
+ggplot(Trip2, aes(x=member_casual, y=distance)) +
+  geom_bar(stat = "identity", fill= "navyblue") +
+  labs(title = "Graph-2:Distance travelled by Rider type",x = "Rider type",y = "Distance Traveled in Km") +
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 2e-6)) +
+  geom_text(aes(label=round(stat(y),2)), color="white",vjust=15)
+
+Trip2.1 =Trip1%>% 
+  group_by(member_casual) %>%
+  summarise(average_distance_km=mean(distance)) 
+print(Trip2.1)
+```
+
+#####  Duration of Riders Rode the Bike
+
+* New column named time_difference is created with unit in hours to know how long the rides have been taken
+* 57% more casual riders rode bikes for longer duration than the membership holders.
+* The average time difference for casual riders is 0.29hr more than the members.
+
+```{r}
+Trip1 = Trip1 %>% 
+  mutate(Trip1, time_difference = difftime(ended_at, started_at, units = "hours"))
+
+Trip3 = Trip1 %>%
+  group_by(member_casual) %>%
+  summarise(duration=sum(time_difference))
+
+
+ggplot(Trip3, aes(x=member_casual, y=duration)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(title = "Graph-3: Duration of Riders Rode the Bike",x = "Rider Type",y = "Hours cycled") +
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 1e-6)) +
+  geom_text(aes(label=round(duration,2)), vjust=15, color="white")
+
+Trip3.1 = Trip1 %>%
+  group_by(member_casual) %>%
+  summarise(average_time=mean(time_difference))
+print(Trip3.1)
+```
+
+####   Bike Preference by The Rider Type
+
+* Classic bike is the most preferred bike type among both of the rider type. 
+
+```{r}
+Trip4 = Trip1 %>%
+  group_by(member_casual, rideable_type) %>%
+  summarise(total_number_of_Riders = n())
+
+ggplot(Trip4, aes(x=member_casual, y= total_number_of_Riders, fill=rideable_type)) +
+  geom_bar(stat="identity") +
+  labs(title = "Graph-4: Bike preference by user type",
+       x = "Rider type",y = "Number of users") +
+  geom_text(aes(label=total_number_of_Riders), position = position_stack(vjust = .5), color="white") +
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 1e-6))
+
+```
+
+
+#### Number of Rides Completed Monthly by Rider Type
+
+* There is increase in the use of bikes from month of June to September due to summer season as people go to visit places as its vacation.
+* A sudden decrease is seen from month of October to February, may be due to the winter season which might be saying that people don't get more out in winter.
+
+
+```{r}
+
+Trip5 = Trip1 %>% 
+  mutate(Trip1, start_month_year = floor_date(as_date(started_at), "month")) %>%
+  group_by(start_month_year, member_casual) %>%
+  summarise(number_of_rides = n())
+
+ggplot(Trip5, aes(x=start_month_year, y=number_of_rides, fill=member_casual))+
+  geom_bar(stat="identity") +
+  labs(title = "Graph-5: Number of Rides Completed Per Month VS Rider Type",x = "Month",y = "Number of Rides", fill = "Rider Type") +
+  geom_text(aes(label=number_of_rides), position = position_stack(vjust = .5), color="black", angle = 360) +
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 1e-6)) +
+  scale_x_date(date_labels = "%b %y", date_breaks = "1 month") +facet_wrap(~member_casual) + coord_flip()
+```
+
+#### Number of Rides Completed: Per Day VS Rider Type
+
+* The plot shows that during week days the number of riders with membership is higher than casual members, this may mean that the membership holders might ride for non-leisure purpose mostly work.
+* And, during the weekends the numbers of riders who are not members is higher than membership holders, this suggests that the casual riders used the bikes for leisure purposes.
+
+```{r}
+Trip6 =Trip1 %>% 
+  mutate(Trip1, day = weekdays(started_at)) %>%
+  group_by(day, member_casual) %>%
+  summarise(Number_of_Rides = n())
+
+week = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+
+ggplot(Trip6, aes(x=factor(day, level = week), y=Number_of_Rides, fill=member_casual))+
+  geom_bar(stat="identity") +
+  labs(title = "Graph-6: Number of Rides Completed: Day VS Rider Type",x = "Day",y = "Number of Rides per Day",fill = "Rider type") +
+  geom_text(aes(label=Number_of_Rides), position = position_stack(vjust = .5), color="black", angle = 360) +
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 1e-6))+facet_wrap(~member_casual)+ coord_flip()
+```
+
+#### Finding out Top5 Stations 
+
+```{r }
+
+T = Trip1 %>%
+  group_by(member_casual, start_station_name) %>%
+  summarise(number_rides=n(),.groups ='drop' ) %>%
+  arrange(desc(number_rides))
+View(T)
+T2 = filter(T,member_casual == 'member') %>% slice(1:5)
+head(T2)
+
+T3 = filter(T,member_casual == 'casual') %>% slice(1:5)
+View(T3)
+
+
+```
+
+## Top Three recommendations based on the Analysis:
+
+Following are some recommendations which can be applied to increase the membership holders:
+
+* Introduce special offers for membership holders
+* Put restrictions on the use of bikes for casual riders, such as limit the duration casual riders can ride bikes.
+* As casual riders use bikes more on weekends, increase the rates on those days.
+
+
+
